@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>One Litre Life 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: sans-serif; }
+        #ui {
+            position: absolute; top: 10px; left: 10px; color: white;
+        }
+        #petrolBar { width: 200px; height: 20px; background: gray; margin-top: 5px; }
+        #petrolFill { width: 100%; height: 100%; background: green; }
+
+        #startBtn{
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%,-50%);
+            padding:15px 30px;
+            font-size:18px;
+            background:black;
+            color:white;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+            z-index:10;
+        }
+    </style>
+</head>
+<body>
+
+<button id="startBtn">START GAME</button>
+
+<div id="ui">
+    <div>Distance: <span id="score">0</span></div>
+    <div id="petrolBar"><div id="petrolFill"></div></div>
+</div>
+
+<!-- SOUNDS -->
+<audio id="engineSound" src="engine.mp3" loop></audio>
+<audio id="crashSound" src="crash.mp3"></audio>
+<audio id="gameOverSound" src="gameover.mp3"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+<script>
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Sounds
+const engineSound = document.getElementById("engineSound");
+const crashSound = document.getElementById("crashSound");
+const gameOverSound = document.getElementById("gameOverSound");
+const startBtn = document.getElementById("startBtn");
+
+startBtn.onclick = () => {
+    engineSound.volume = 0.4;
+    engineSound.play();
+    startBtn.style.display = "none";
+};
+
+// Light
+let light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(0,10,10);
+scene.add(light);
+
+// Bike
+let bike = new THREE.Mesh(
+    new THREE.BoxGeometry(1,1,2),
+    new THREE.MeshPhongMaterial({color:0xff0000})
+);
+bike.position.y = 0.5;
+scene.add(bike);
+
+// Road
+let road = new THREE.Mesh(
+    new THREE.BoxGeometry(5,0.1,500),
+    new THREE.MeshPhongMaterial({color:0x333333})
+);
+road.position.z = 250;
+scene.add(road);
+
+// Camera
+camera.position.set(0,5,10);
+camera.lookAt(bike.position);
+
+// Game variables
+let petrol = 100;
+let distance = 0;
+let speed = 0.2;
+let obstacles = [];
+
+// Obstacles
+function spawnObstacle(z){
+    let obs = new THREE.Mesh(
+        new THREE.BoxGeometry(1,1,1),
+        new THREE.MeshPhongMaterial({color:0x0000ff})
+    );
+    obs.position.set(Math.random()*4-2,0.5,z);
+    scene.add(obs);
+    obstacles.push(obs);
+}
+for(let i=50;i<500;i+=50) spawnObstacle(i);
+
+// Animate
+function animate(){
+    requestAnimationFrame(animate);
+
+    bike.position.z += speed;
+    distance += speed;
+    petrol -= 0.01;
+
+    document.getElementById("score").innerText = Math.floor(distance);
+    document.getElementById("petrolFill").style.width = petrol + "%";
+
+    obstacles.forEach(obs=>{
+        if(Math.abs(obs.position.z-bike.position.z)<1 &&
+           Math.abs(obs.position.x-bike.position.x)<1){
+            petrol -= 10;
+            crashSound.currentTime = 0;
+            crashSound.play();
+        }
+    });
+
+    if(petrol <= 0){
+        engineSound.pause();
+        gameOverSound.play();
+        alert("Game Over! Distance: " + Math.floor(distance));
+        petrol = 100;
+        distance = 0;
+        bike.position.set(0,0.5,0);
+        engineSound.play();
+    }
+
+    camera.position.z = bike.position.z + 10;
+    camera.position.x = bike.position.x;
+    camera.lookAt(bike.position);
+
+    renderer.render(scene,camera);
+}
+animate();
+
+// Controls
+document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowLeft") bike.position.x -= 0.5;
+    if(e.key==="ArrowRight") bike.position.x += 0.5;
+});
+</script>
+</body>
+</html>
